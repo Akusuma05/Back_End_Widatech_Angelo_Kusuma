@@ -36,12 +36,25 @@ function createProductInvoice(req, res){
         if (err) {
             return res.status(500).json({ message: 'ProductInvoiceController(createProductInvoice): Error saving ProductInvoice', error: err });
         }
+        
+        const updateStockSql = 'UPDATE product SET product_stock = product_stock - 1 WHERE product_id = ? AND product_stock > 0'
+        mysql.query(updateStockSql, [product_id], (err, updateResult) => {
+            // Error
+            if (err) {
+                return res.status(500).json({ message: 'ProductInvoiceController(createProductInvoice): Error updating product stock', error: err });
+            }
 
-        // Success
-        res.status(201).json({
-            success: true,
-            message: 'ProductInvoiceController(createProductInvoice): ProductInvoice created successfully',
-            invoice: newProductInvoice
+            // Check if stock was actually decreased
+            if (updateResult.affectedRows === 0) {
+                return res.status(400).json({ message: 'ProductInvoiceController(createProductInvoice): Product out of stock or not found' });
+            }
+
+            // Success
+            res.status(201).json({
+                success: true,
+                message: 'ProductInvoiceController(createProductInvoice): ProductInvoice created and product stock updated successfully',
+                invoice: newProductInvoice
+            });
         });
     });
 }
@@ -86,7 +99,7 @@ function updateProductInvoice(req, res){
       if (rows.affectedRows === 0) {
          return res.status(404).json({ message: 'ProductInvoiceController(updateProductInvoice): ProductInvoice not found!', query: querySql, objects: Object.values(updates), id: req.params.id}); 
       }
-  
+        
       // Success
       res.status(200).json({ success: true, message: 'ProductInvoiceController(updateProductInvoice): ProductInvoice updated successfully!' });
     });
